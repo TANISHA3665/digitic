@@ -1,5 +1,6 @@
 const User = require('../models/userModel');
 const { generateToken } = require('../config/jwtToken');
+const { validateMongoDbId } = require('../utils/validateMongoDbId');
 
 const createUser = async (req, res) =>
 {
@@ -15,10 +16,7 @@ const createUser = async (req, res) =>
         }
         else
         {
-            res.status(409).send({
-                msg: "User already exists",
-                success: false
-            });
+            throw new Error("User already exists");
         }
     } catch (error) {
         res.status(400).send({
@@ -48,9 +46,7 @@ const loginUser = async (req, res) =>
             });
         } else
         {
-            res.status(400).send({
-                error: "Invalid Credentials"
-            });
+            throw new Error("Invalid credentials")
         }
     } catch (error)
     {
@@ -75,11 +71,13 @@ const getAUser = async (req, res) =>
 {
     try {
         const { id } = req.params;
+        validateMongoDbId(id);
+
         const user = await User.findById(id);
 
         if (!user)
         {
-            res.status(400).send({ error: 'User not found' });
+            throw new Error("User not found");
         }
 
         res.status(200).send(user);
@@ -92,10 +90,12 @@ const deleteAUser = async (req, res) =>
 {
     try {
         const { id } = req.params;
+        validateMongoDbId(id);
+
         const deletedUser = await User.findByIdAndDelete(id);
 
         if (!deletedUser){ 
-            res.status(400).send({ error: "User does not exist" });
+            throw new Error("User does not exist");
         }
 
         res.status(200).send({ message: "User deleted successfully", user: deletedUser });
@@ -107,8 +107,10 @@ const deleteAUser = async (req, res) =>
 const updateAUser = async (req, res) =>
 {
     try {
-        const { id } = req.params;
-        const updatedUser = await User.findByIdAndUpdate(id, {
+        const { _id } = req.user;
+        validateMongoDbId(_id);
+
+        const updatedUser = await User.findByIdAndUpdate(_id, {
             firstName: req?.body?.firstName,
             lastName: req?.body?.lastName,
             email: req?.body?.email,
@@ -119,7 +121,7 @@ const updateAUser = async (req, res) =>
         );
 
         if (!updatedUser) {
-            return res.status(400).send({ error: 'User not found' });
+            throw new Error("User not found")
         }
 
         res.status(200).send(updatedUser);
@@ -128,6 +130,57 @@ const updateAUser = async (req, res) =>
     }
 }
 
+const blockAUser = async (req, res) =>
+{ 
+    try
+    {
+        const { id } = req.params;
+        validateMongoDbId(id);
+
+        const user = await User.findById(id);
+
+        if (!user) {
+            throw new Error("User not found")
+        }
+
+        if (user.isBlocked) {
+            throw new Error("User is already blocked")
+        }
+
+        const blockedUser = await User.findByIdAndUpdate(id, { isBlocked: true }, { new: true });
+        res.status(200).send({ message: "User blocked successfully", blockedUser: blockedUser });
+
+    } catch (error)
+    {
+        res.status(400).send({ error: error.message, stack: error.stack });
+    } 
+}
+
+const unblockAUser = async (req, res) =>
+{
+    try
+    {
+        const { id } = req.params;
+        validateMongoDbId(id);
+
+        const user = await User.findById(id);
+
+        if (!user) {
+            throw new Error("User not found")
+        }
+
+        if (!(user.isBlocked)) {
+            throw new Error("User is already unblocked")
+        }
+
+        const unblockedUser = await User.findByIdAndUpdate(id, { isBlocked: false }, { new: true });
+        res.status(200).send({ message: "User unblocked successfully", unblockedUser: unblockedUser });
+
+    } catch (error)
+    {
+        res.status(400).send({ error: error.message, stack: error.stack });
+    } 
+};
 
 module.exports = {
     createUser,
@@ -135,5 +188,7 @@ module.exports = {
     getAllUsers,
     getAUser,
     deleteAUser,
-    updateAUser
+    updateAUser,
+    blockAUser,
+    unblockAUser
 }
