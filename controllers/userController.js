@@ -52,7 +52,7 @@ const loginUser = async (req, res) =>
             });
         } else
         {
-            throw new Error("Invalid credentials")
+            throw new Error("Invalid credentials");
         }
     } catch (error)
     {
@@ -181,7 +181,7 @@ const updateAUser = async (req, res) =>
         );
 
         if (!updatedUser) {
-            throw new Error("User not found")
+            throw new Error("User not found");
         }
 
         res.status(200).send(updatedUser);
@@ -200,11 +200,11 @@ const blockAUser = async (req, res) =>
         const user = await User.findById(id);
 
         if (!user) {
-            throw new Error("User not found")
+            throw new Error("User not found");
         }
 
         if (user.isBlocked) {
-            throw new Error("User is already blocked")
+            throw new Error("User is already blocked");
         }
 
         const blockedUser = await User.findByIdAndUpdate(id, { isBlocked: true }, { new: true });
@@ -226,11 +226,11 @@ const unblockAUser = async (req, res) =>
         const user = await User.findById(id);
 
         if (!user) {
-            throw new Error("User not found")
+            throw new Error("User not found");
         }
 
         if (!(user.isBlocked)) {
-            throw new Error("User is already unblocked")
+            throw new Error("User is already unblocked");
         }
 
         const unblockedUser = await User.findByIdAndUpdate(id, { isBlocked: false }, { new: true });
