@@ -70,11 +70,9 @@ const handleRefreshToken = async (req, res) =>
         if (!cookie?.refreshToken) throw new Error("No refresh token in cookie");
         const refreshToken = cookie.refreshToken;
         const user = await User.findOne({ refreshToken: refreshToken });
-        console.log(user);
         if (!user) throw new Error("No refresh token in db or matched");
         jwt.verify(refreshToken, process.env.JWT_SECRET_KEY, (err, decoded) =>
         {
-            console.log(decoded);
             if (err || (decoded.id != user._id))
             {
                 throw new Error("There is something wrong with refresh token");
@@ -87,6 +85,35 @@ const handleRefreshToken = async (req, res) =>
             error: error.message,
             stack: error.stack
         })
+    }
+};
+
+const logoutUser = async (req, res) =>
+{ 
+    try {
+        const cookie = req.cookies;
+        if (!cookie?.refreshToken) throw new Error("Refresh token not found");
+        const refreshToken = cookie.refreshToken;
+        const user = await User.findOne({ refreshToken: refreshToken });
+        console.log(user)
+        if (!user)
+        {
+            res.clearCookie("refreshToken", {
+                httpOnly: true,
+                secure: true
+            });
+            res.status(204);
+        }
+        await User.findOneAndUpdate({ refreshToken: refreshToken }, {
+            refreshToken: "",
+        });
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: true
+        });
+         res.status(200).send("Logged out successfully")
+    } catch (error) {
+        res.status(400).send({error: error.message, stack: error.stack});
     }
 };
 
@@ -220,11 +247,12 @@ const unblockAUser = async (req, res) =>
 module.exports = {
     createUser,
     loginUser,
+    handleRefreshToken,
+    logoutUser,
     getAllUsers,
     getAUser,
     deleteAUser,
     updateAUser,
     blockAUser,
     unblockAUser,
-    handleRefreshToken
 }
