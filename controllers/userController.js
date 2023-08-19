@@ -1,6 +1,8 @@
 const User = require('../models/userModel');
 const { generateToken } = require('../config/jwtToken');
 const { validateMongoDbId } = require('../utils/validateMongoDbId');
+const { generateRefreshToken } = require('../config/refreshToken');
+const jwt  = require('jsonwebtoken');
 
 const createUser = async (req, res) =>
 {
@@ -36,6 +38,10 @@ const loginUser = async (req, res) =>
         const findUser = await User.findOne({ email: email });
         if (findUser && await findUser.isPasswordMatched(password))
         {
+            const refreshToken = generateRefreshToken(findUser._id);
+            const updateUser = await User.findByIdAndUpdate(findUser._id, { refreshToken: refreshToken }, { new: true });
+            res.cookie("refreshToken", refreshToken, { httpOnly: true, maxAge: 3 * 24 * 60 * 60 * 1000});
+
             res.status(200).send({
                 _id: findUser?._id,
                 firstName: findUser?.firstName,
@@ -56,6 +62,33 @@ const loginUser = async (req, res) =>
         });
     }
 }
+
+const handleRefreshToken = async (req, res) =>
+{
+    try {
+        const cookie = req.cookies;
+        if (!cookie?.refreshToken) throw new Error("No refresh token in cookie");
+        const refreshToken = cookie.refreshToken;
+        const user = await User.findOne({ refreshToken: refreshToken });
+        console.log(user);
+        if (!user) throw new Error("No refresh token in db or matched");
+        jwt.verify(refreshToken, process.env.JWT_SECRET_KEY, (err, decoded) =>
+        {
+            console.log(decoded);
+            if (err || (decoded.id != user._id))
+            {
+                throw new Error("There is something wrong with refresh token");
+            }
+            const accessToken = generateToken(user?._id);
+            res.send({ accessToken });
+        });
+    } catch (error) {
+        res.status(400).send({
+            error: error.message,
+            stack: error.stack
+        })
+    }
+};
 
 const getAllUsers = async (req, res) =>
 {
@@ -182,6 +215,8 @@ const unblockAUser = async (req, res) =>
     } 
 };
 
+
+
 module.exports = {
     createUser,
     loginUser,
@@ -190,5 +225,6 @@ module.exports = {
     deleteAUser,
     updateAUser,
     blockAUser,
-    unblockAUser
+    unblockAUser,
+    handleRefreshToken
 }

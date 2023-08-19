@@ -1,4 +1,5 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const { dbConnect } = require('./config/dbConnect');
 const app = express();
 require('dotenv').config();
@@ -9,6 +10,8 @@ const { errorHandler, notFound } = require('./middlewares/errorHandler');
 dbConnect();
 
 app.use(express.json());
+app.use(cookieParser());
+
 
 app.use('/api/user', authRouter)
 
