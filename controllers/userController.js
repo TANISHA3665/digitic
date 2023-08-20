@@ -242,6 +242,32 @@ const unblockAUser = async (req, res) =>
     } 
 };
 
+const updatePassword = async (req, res) =>
+{
+    try
+    {
+        console.log(req.user)
+        const { _id } = req.user;
+        const { password } = req.body;
+        console.log(password);
+        validateMongoDbId(_id);
+        const user = await User.findById(_id);
+        if(!user) throw new Error("User not found");
+        if (password)
+        {
+            user.password = password;
+            const updatePassword = await user.save();
+            res.status(200).send(updatePassword);
+        }
+        else
+        {
+            res.status(200).send(user);
+        }
+    } catch (error) {
+        throw new Error(error);
+    };
+};
+
 
 
 module.exports = {
@@ -255,4 +281,5 @@ module.exports = {
     updateAUser,
     blockAUser,
     unblockAUser,
+    updatePassword
 }

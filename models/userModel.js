@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 // Declare the Schema of the Mongo model
 var userSchema = new mongoose.Schema(
@@ -37,6 +38,9 @@ var userSchema = new mongoose.Schema(
         refreshToken: {
             type: String,
         },
+        passwordChangedAt: { type: Date },
+        passwordResetToken: { type: String },
+        passwordResetExpires: { type: Date},
         cart: {
             type: Array,
             default: []
@@ -51,13 +55,26 @@ var userSchema = new mongoose.Schema(
 
 userSchema.pre('save', async function (next)
 {
+    // if (!this.isModified('password'))
+    // {
+    //     return next();
+    // }
     const salt = bcrypt.genSaltSync(10);
     this.password = await bcrypt.hash(this.password, salt);
+    next();
 });
 
 userSchema.methods.isPasswordMatched = async function (enteredPassword)
 {
     return await bcrypt.compare(enteredPassword, this.password);
+};
+
+userSchema.methods.createPasswordResetToken = async function ()
+{
+    const resettoken = crypto.randomBytes(32).toString("hex"); 
+    this.passwordResetToken = crypto.createHash('sha256').update(resettoken).digest('hex'); 
+    this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+    return resettoken; 
 };
 
 //Export the model
